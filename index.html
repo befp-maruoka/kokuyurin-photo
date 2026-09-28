@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f6b3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="現場写真">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>国有林 現場写真送信（試作）</title>
+<style>
+  :root { --green:#2f6b3a; --green-l:#e8f2e9; --warn:#b45309; --warn-l:#fff4e5; --err:#b91c1c; --err-l:#fdecec; --text:#1f2a22; --muted:#5b665e; --line:#d5ddd6; --bg:#f6f8f6; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif; background:var(--bg); color:var(--text); font-size:16px; line-height:1.6; }
+  header { background:var(--green); color:#fff; padding:14px 16px calc(14px) ; padding-top:calc(14px + env(safe-area-inset-top)); }
+  header h1 { margin:0; font-size:18px; }
+  header p { margin:2px 0 0; font-size:12px; opacity:.85; }
+  main { max-width:560px; margin:0 auto; padding:16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
+  .card h2 { font-size:15px; margin:0 0 10px; color:var(--green); }
+  label { display:block; font-size:14px; color:var(--muted); margin-bottom:6px; }
+  select, input[type=text], input[type=password] { width:100%; font-size:16px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .btn { display:block; width:100%; font-size:17px; font-weight:600; padding:14px; border-radius:10px; border:none; background:var(--green); color:#fff; cursor:pointer; }
+  .btn:disabled { background:#9fb5a3; }
+  .btn.sub { background:#fff; color:var(--green); border:1px solid var(--green); font-size:15px; padding:10px; }
+  .pick { display:block; text-align:center; border:2px dashed var(--green); border-radius:10px; padding:18px; color:var(--green); font-weight:600; background:var(--green-l); }
+  .pick input { display:none; }
+  .status { display:flex; gap:8px; flex-wrap:wrap; }
+  .pill { font-size:13px; padding:4px 10px; border-radius:999px; background:var(--green-l); color:var(--green); }
+  .pill.off { background:var(--warn-l); color:var(--warn); }
+  .pill.err { background:var(--err-l); color:var(--err); }
+  .big { font-size:28px; font-weight:700; }
+  .msg { padding:10px 12px; border-radius:8px; font-size:14px; margin-top:10px; }
+  .msg.ok { background:var(--green-l); color:var(--green); }
+  .msg.warn { background:var(--warn-l); color:var(--warn); }
+  .msg.err { background:var(--err-l); color:var(--err); }
+  ul.q { list-style:none; margin:10px 0 0; padding:0; max-height:260px; overflow:auto; }
+  ul.q li { display:flex; justify-content:space-between; gap:8px; font-size:13px; padding:6px 0; border-top:1px solid var(--line); }
+  ul.q li span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .muted { color:var(--muted); font-size:13px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>国有林 現場写真送信</h1>
+  <p>試作版　電波がなくても保存し、つながったら自動で送ります</p>
+</header>
+<main>
+  <section class="card" id="net-card">
+    <div class="status">
+      <span class="pill" id="net-pill">確認中</span>
+      <span class="pill" id="user-pill">未設定</span>
+    </div>
+    <p class="muted" style="margin:10px 0 0">未送信の写真</p>
+    <div class="big" id="pending-count">0 枚</div>
+    <div id="sync-msg"></div>
+    <ul class="q" id="queue-list"></ul>
+    <button class="btn sub" id="retry-btn" style="margin-top:10px">今すぐ再送する</button>
+  </section>
+
+  <section class="card hidden" id="key-card">
+    <h2>最初の設定（1回だけ）</h2>
+    <label for="key-input">事務所から受け取った「送信キー」を入力してください</label>
+    <input type="password" id="key-input" autocomplete="off" placeholder="送信キー">
+    <button class="btn" id="key-btn" style="margin-top:10px">設定する</button>
+    <div id="key-msg"></div>
+  </section>
+
+  <section class="card hidden" id="send-card">
+    <h2>1. 現場を選ぶ</h2>
+    <select id="site-select"></select>
+    <p class="muted" id="site-note" style="margin:6px 0 0"></p>
+
+    <h2 style="margin-top:18px">2. 写真を選ぶ（最大50枚）</h2>
+    <label class="pick" id="pick-label">写真を選ぶ
+      <input type="file" id="file-input" multiple accept="image/*,.heic,.heif">
+    </label>
+    <p class="muted" id="pick-info" style="margin:6px 0 0">まだ選んでいません</p>
+
+    <h2 style="margin-top:18px">3. 送る</h2>
+    <button class="btn" id="send-btn" disabled>送信する</button>
+    <div id="send-msg"></div>
+  </section>
+
+  <p class="muted" style="text-align:center">ホーム画面に追加して使ってください（電波がない場所でも開けます）<br><a href="#" id="reset-key">送信キーを入れ直す</a></p>
+</main>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
