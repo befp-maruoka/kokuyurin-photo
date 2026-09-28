@@ -142,6 +142,39 @@
     show($("key-msg"), "err", msg || "");
   }
 
+  // ---------- 事務所からの過不足結果 ----------
+  const LS_RESULT = "kokuyurin.result.";
+  function currentSite() { return $("site-select").value || ls.get(LS_SITE) || ""; }
+  async function loadResult() {
+    const key = ls.get(LS_KEY), site = currentSite();
+    if (!key || !site) { renderResult(null); return; }
+    try {
+      const r = await api({ action: "status", key, siteId: site });
+      if (r.ok) ls.set(LS_RESULT + site, JSON.stringify(r.shared || null));
+    } catch (e) { /* 電波なし：前回受け取った結果を表示 */ }
+    let shared = null;
+    try { shared = JSON.parse(ls.get(LS_RESULT + site) || "null"); } catch (e) {}
+    renderResult(shared);
+  }
+  function renderResult(shared) {
+    const card = $("result-card");
+    if (!shared || !shared.summary) { card.classList.add("hidden"); return; }
+    card.classList.remove("hidden");
+    const s = shared.summary, d = new Date(shared.sharedAt), p2 = (n) => String(n).padStart(2, "0");
+    $("result-pills").innerHTML = '<span class="pill ok">完了 ' + s.done + '</span><span class="pill off">要確認 ' + s.check + '</span><span class="pill err">不足 ' + s.short + "</span>";
+    $("result-note").textContent = (d.getMonth() + 1) + "/" + d.getDate() + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()) + " 時点（必要 " + s.total + "項目）" + (navigator.onLine ? "" : "・電波がないため前回の結果です");
+    const need = s.items.filter((i) => i.status !== "完了");
+    const byWork = [];
+    need.forEach((i) => { let w = byWork.find((x) => x.work === i.work); if (!w) { w = { work: i.work, ng: [], ck: [] }; byWork.push(w); } (i.status === "不足" ? w.ng : w.ck).push(i.kubun); });
+    $("result-list").innerHTML = need.length
+      ? '<ul class="rl">' + byWork.map((w) =>
+          "<li><span><b>" + escapeHtml(w.work) + "</b><br>" +
+          (w.ng.length ? '<span class="ng">追加撮影：' + w.ng.map(escapeHtml).join("・") + "</span>" : "") +
+          (w.ng.length && w.ck.length ? "<br>" : "") +
+          (w.ck.length ? '<span class="ck">事務所で確認中：' + w.ck.map(escapeHtml).join("・") + "</span>" : "") + "</span></li>").join("") + "</ul>"
+      : '<div class="msg ok">必要な写真はすべてそろっています。</div>';
+  }
+
   // ---------- 写真選択・保存 ----------
   let picked = [];
   function updateSendBtn() {
@@ -258,13 +291,13 @@
     }
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     updateNet();
-    window.addEventListener("online", () => { updateNet(); loadSites(); sync(); });
+    window.addEventListener("online", () => { updateNet(); loadSites(); sync(); loadResult(); });
     window.addEventListener("offline", () => { updateNet(); refreshQueue(); });
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sync(); });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { sync(); loadResult(); } });
     setInterval(sync, CFG.RETRY_INTERVAL_MS);
 
     $("file-input").addEventListener("change", onPick);
-    $("site-select").addEventListener("change", updateSendBtn);
+    $("site-select").addEventListener("change", () => { updateSendBtn(); ls.set(LS_SITE, $("site-select").value); loadResult(); });
     $("send-btn").addEventListener("click", onSend);
     $("retry-btn").addEventListener("click", sync);
     $("key-btn").addEventListener("click", async () => {
@@ -286,7 +319,7 @@
       needKey(""); renderSites();
     });
 
-    if (ls.get(LS_KEY)) { $("send-card").classList.remove("hidden"); renderSites(); loadSites(); }
+    if (ls.get(LS_KEY)) { $("send-card").classList.remove("hidden"); renderSites(); loadSites(); loadResult(); }
     else needKey("");
     await refreshQueue();
     sync();

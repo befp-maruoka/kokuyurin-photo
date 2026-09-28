@@ -41,6 +41,11 @@
   ul.q li span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .muted { color:var(--muted); font-size:13px; }
   .hidden { display:none; }
+  .pill.ok { background:var(--green-l); color:var(--green); }
+  .rl { margin:10px 0 0; padding:0; list-style:none; }
+  .rl li { font-size:14px; padding:6px 0; border-top:1px solid var(--line); display:flex; justify-content:space-between; gap:8px; }
+  .rl .ng { color:var(--err); font-weight:600; }
+  .rl .ck { color:var(--warn); font-weight:600; }
 </style>
 </head>
 <body>
@@ -83,6 +88,13 @@
     <h2 style="margin-top:18px">3. 送る</h2>
     <button class="btn" id="send-btn" disabled>送信する</button>
     <div id="send-msg"></div>
+  </section>
+
+  <section class="card hidden" id="result-card">
+    <h2>事務所からの確認結果</h2>
+    <div class="status" id="result-pills"></div>
+    <p class="muted" id="result-note" style="margin:8px 0 0"></p>
+    <div id="result-list"></div>
   </section>
 
   <p class="muted" style="text-align:center">ホーム画面に追加して使ってください（電波がない場所でも開けます）<br><a href="#" id="reset-key">送信キーを入れ直す</a></p>

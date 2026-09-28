@@ -1,5 +1,5 @@
 // 画面の部品を端末に保存し、電波がなくてもアプリを開けるようにする
-const CACHE = "kokuyurin-photo-v1";
+const CACHE = "kokuyurin-photo-v2";
 const SHELL = ["./", "index.html", "app.js", "config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
